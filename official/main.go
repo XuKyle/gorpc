@@ -21,6 +21,7 @@ func main() {
 	http.ListenAndServe(":8080", nil)
 }
 
+// decode encode request
 func decodeUppercaseRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	var request ep.UppercaseRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
