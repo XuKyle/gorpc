@@ -60,14 +60,14 @@ func main() {
 
 	for i := 0; i < 10; i++ {
 		if _, err := reqEndPoint(ctx, req); err != nil {
-			panic(err)
+			fmt.Println("error ")
 		}
 	}
 }
 
 func reqFactory(instanceAddr string) (endpoint.Endpoint, io.Closer, error) {
 	return func(ctx context.Context, request interface{}) (response interface{}, err error) {
-		fmt.Println("请求服务:", instanceAddr)
+		fmt.Println("请求服务:", instanceAddr, "当前时间：", time.Now().Format("2006-01-02 15:04:05"))
 		conn, err := grpc.Dial(instanceAddr, grpc.WithInsecure())
 		if err != nil {
 			fmt.Println(err)
