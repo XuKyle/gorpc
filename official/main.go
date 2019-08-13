@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	kithttp "github.com/go-kit/kit/transport/http"
 	"gorpc/official/ep"
-	"gorpc/official/service/impl"
+	"gorpc/official/service"
 	"net/http"
 )
 
 func main() {
-	stringService := impl.StringServiceImpl{}
+	stringService := service.StringServiceImpl{}
 
 	upperCaseHandler := kithttp.NewServer(ep.MakeUppercaseEndpoint(stringService), decodeUppercaseRequest, encodeResponse)
 	countHandler := kithttp.NewServer(ep.MakeCountEndpoint(stringService), decodeCountRequest, encodeResponse)
