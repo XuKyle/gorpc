@@ -20,18 +20,22 @@ func main() {
 
 	flag.Parse()
 
-	var svc Service
-	svc = ArithmeticService{}
-
-	ctx := context.Background()
-	errChan := make(chan error)
-
+	// *************logger***************
 	var logger log.Logger
 	{
 		logger = log.NewLogfmtLogger(os.Stderr)
 		logger = log.With(logger, "ts", log.DefaultTimestampUTC)
 		logger = log.With(logger, "caller", log.DefaultCaller)
 	}
+
+	var svc Service
+	svc = ArithmeticService{}
+
+	// 添加middleware
+	svc = LoggingMiddleware(logger)(svc)
+
+	ctx := context.Background()
+	errChan := make(chan error)
 
 	endpoint := MakeArithmeticEndpoint(svc)
 	healthEndpoint := MakeHealthCheckEndpoint(svc)
