@@ -7,21 +7,25 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/metrics"
 	"github.com/go-kit/kit/metrics/prometheus"
+	"github.com/go-kit/kit/sd"
+	"github.com/go-kit/kit/sd/consul"
+	"github.com/hashicorp/consul/api"
 	stdprometheus "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"gorpc/addthrift/pkg/taddendpoint"
 	"gorpc/addthrift/pkg/taddservice"
 	"gorpc/addthrift/pkg/taddtransport"
 	"gorpc/addthrift/thrift/gen-go/addsvc"
+	"gorpc/addthrift/utils"
 	"net/http"
 	"os"
+	"strconv"
 	"text/tabwriter"
 )
 
 func main() {
 	fs := flag.NewFlagSet("addservice", flag.ExitOnError)
 	thriftAddr := fs.String("thrift-addr", ":8083", "thrift listen address")
-	fmt.Println("server start@:", *thriftAddr)
 
 	fs.Usage = usageFor(fs, os.Args[0]+" [flags]")
 	_ = fs.Parse(os.Args[1:])
@@ -90,9 +94,54 @@ func main() {
 		protocolFactory,
 	).Serve()
 
+	// 注册
+	registar := Register("192.168.70.3", "8500", utils.GetLocalIp(), "8083", logger)
+	registar.Register()
+
 	if err != nil {
 		fmt.Println("server error")
 	}
+}
+
+func Register(consulHost, consulPort, svcHost, svcPort string, logger log.Logger) (registar sd.Registrar) {
+	fmt.Println("register***********")
+	// 创建Consul客户端连接
+	var client consul.Client
+	{
+		consulCfg := api.DefaultConfig()
+		consulCfg.Address = consulHost + ":" + consulPort
+		consulClient, err := api.NewClient(consulCfg)
+		if err != nil {
+			logger.Log("create consul client error:", err)
+			os.Exit(1)
+		}
+
+		client = consul.NewClient(consulClient)
+	}
+
+	// 设置Consul对服务健康检查的参数
+	check := api.AgentServiceCheck{
+		HTTP:     "http://" + svcHost + ":" + svcPort + "/health",
+		Interval: "10s",
+		Timeout:  "1s",
+		Notes:    "Consul check service health status.",
+	}
+
+	port, _ := strconv.Atoi(svcPort)
+
+	//设置微服务想Consul的注册信息
+	reg := api.AgentServiceRegistration{
+		ID:      "add" + svcHost,
+		Name:    "addsvc",
+		Address: svcHost,
+		Port:    port,
+		Tags:    []string{"recommend", "add"},
+		Check:   &check,
+	}
+
+	// 执行注册
+	registar = consul.NewRegistrar(client, &reg, logger)
+	return
 }
 
 func usageFor(fs *flag.FlagSet, short string) func() {
